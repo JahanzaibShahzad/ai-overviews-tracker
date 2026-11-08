@@ -66,6 +66,12 @@ Not yet checked (1):
   - emergency drain cleaning
 ```
 
+Re-check a keyword later and `report` flags any keyword whose AI Overview
+status flipped since its previous check, under
+"Changed since previous check". That is the signal that matters most: a
+keyword gaining an AI Overview pushes your organic result down the page, and
+a keyword losing one opens a window to win clicks back.
+
 ## What this tells you (SEO use)
 
 Keywords with an AI Overview push organic results further down the page and

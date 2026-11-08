@@ -61,6 +61,25 @@ class TrackerTest(unittest.TestCase):
         self.assertEqual(summary["trigger_rate_pct"], 0.0)
         self.assertEqual(len(summary["unlogged"]), 3)
 
+    def test_summarise_detects_status_change(self):
+        log_check(self.tmp / CHECKS_CSV, "best plumber near me", False, check_date="2026-10-01")
+        log_check(self.tmp / CHECKS_CSV, "best plumber near me", True, check_date="2026-11-03")
+        log_check(self.tmp / CHECKS_CSV, "how to fix a leaking tap", False, check_date="2026-10-01")
+        log_check(self.tmp / CHECKS_CSV, "how to fix a leaking tap", False, check_date="2026-11-03")
+        summary = summarise(read_keywords(self.tmp / KEYWORDS_CSV), read_checks(self.tmp / CHECKS_CSV))
+        self.assertEqual(len(summary["changed"]), 1)
+        change = summary["changed"][0]
+        self.assertEqual(change["keyword"], "best plumber near me")
+        self.assertEqual(change["from"], "no")
+        self.assertEqual(change["to"], "yes")
+        self.assertEqual(change["from_date"], "2026-10-01")
+        self.assertEqual(change["to_date"], "2026-11-03")
+
+    def test_summarise_no_change_on_single_check(self):
+        log_check(self.tmp / CHECKS_CSV, "best plumber near me", True, check_date="2026-11-03")
+        summary = summarise(read_keywords(self.tmp / KEYWORDS_CSV), read_checks(self.tmp / CHECKS_CSV))
+        self.assertEqual(summary["changed"], [])
+
     def test_bad_keywords_header(self):
         with (self.tmp / "bad.csv").open("w", encoding="utf-8") as fh:
             fh.write("wrong,header\n")

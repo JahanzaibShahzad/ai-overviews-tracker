@@ -100,18 +100,37 @@ def read_checks(checks_file: Path) -> list[dict[str, str]]:
 def summarise(keywords: list[str], checks: list[dict[str, str]]) -> dict:
     """Aggregate the log into a summary dict. Latest check per keyword wins."""
     latest: dict[str, dict[str, str]] = {}
+    history: dict[str, list[dict[str, str]]] = {}
     for row in checks:
         latest[row["keyword"]] = row
+        history.setdefault(row["keyword"], []).append(row)
     checked = {kw: latest[kw] for kw in keywords if kw in latest}
     triggering = sorted(kw for kw, row in checked.items() if row["has_ai_overview"] == "yes")
     not_triggering = sorted(kw for kw, row in checked.items() if row["has_ai_overview"] != "yes")
     unlogged = sorted(kw for kw in keywords if kw not in latest)
+    changed = []
+    for kw in sorted(history):
+        rows = history[kw]
+        if len(rows) < 2:
+            continue
+        prev, last = rows[-2], rows[-1]
+        if prev["has_ai_overview"] != last["has_ai_overview"]:
+            changed.append(
+                {
+                    "keyword": kw,
+                    "from": prev["has_ai_overview"],
+                    "to": last["has_ai_overview"],
+                    "from_date": prev["date"],
+                    "to_date": last["date"],
+                }
+            )
     return {
         "total_keywords": len(keywords),
         "checked": len(checked),
         "triggering": triggering,
         "not_triggering": not_triggering,
         "unlogged": unlogged,
+        "changed": changed,
         "trigger_rate_pct": round(100 * len(triggering) / len(checked), 1) if checked else 0.0,
     }
 
@@ -133,6 +152,14 @@ def print_report(summary: dict) -> None:
         print(f"Not yet checked ({len(summary['unlogged'])}):")
         for kw in summary["unlogged"]:
             print(f"  - {kw}")
+    if summary.get("changed"):
+        print()
+        print(f"Changed since previous check ({len(summary['changed'])}):")
+        for change in summary["changed"]:
+            print(
+                f"  - {change['keyword']}: {change['from']} ({change['from_date']})"
+                f" -> {change['to']} ({change['to_date']})"
+            )
 
 
 def cmd_init(args: argparse.Namespace) -> int:
